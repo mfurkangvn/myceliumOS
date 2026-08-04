@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "jsx": "react-jsx"
+  },
+  "exclude": [
+    "node_modules",
+    ".expo",
+    ".vscode"
+  ]
+}
