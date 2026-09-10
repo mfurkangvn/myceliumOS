@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useNavigation } from "@react-navigation/native";
 import { RoomContext } from "../../RoomContext";
@@ -42,9 +42,17 @@ const Header = ({ title }) => {
         <TouchableOpacity
           onPress={() => navigation.navigate("Home")}
           activeOpacity={0.7}
+          style={styles.titleWrapper}
         >
-          <Text style={styles.appTitle}>{title || "myceliumOS"}</Text>
-          <Text style={styles.headerSubtitle}>Mantar Üretim Kontrol Paneli</Text>
+          <Image
+            source={require("../../assets/icon.png")}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={styles.appTitle}>{title || "Mantar Asistanı"}</Text>
+            <Text style={styles.headerSubtitle}>Mantar Üretim Kontrol Paneli</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -82,8 +90,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(233, 196, 106, 0.25)",
   },
+  titleWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+  },
   appTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     color: COLORS.textWhite,
     letterSpacing: 0.5,

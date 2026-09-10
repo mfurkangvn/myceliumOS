@@ -1,11 +1,11 @@
-# myceliumOS 🍄
+# Mantar Asistanı (myceliumOS) 🍄
 
 [![Expo](https://img.shields.io/badge/Expo-000000?style=for-the-badge&logo=expo&logoColor=white)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
 [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-**myceliumOS**, istiridye mantarı üreticilerinin tesislerindeki üretim odalarını, iklimsel hedef parametrelerini ve günlük hasat verimliliğini takip etmeleri için tasarlanmış **React Native (Expo)** tabanlı bir mobil takip ve yönetim uygulamasıdır.
+**Mantar Asistanı (myceliumOS)**, istiridye mantarı üreticilerinin tesislerindeki üretim odalarını, iklimsel hedef parametrelerini ve günlük hasat verimliliğini takip etmeleri için tasarlanmış **React Native (Expo)** tabanlı bir mobil takip ve yönetim uygulamasıdır.
 
 Uygulama, mantar yetiştiriciliğinin kritik evrelerini (Kuluçka, Çizik, Pin ve Hasat) gün gün izleyerek üreticiye akıllı tavsiyeler ve iklimsel hedef parametreleri sunar.
 

@@ -36,7 +36,7 @@ export const Navigator = () => {
       <Stack.Screen
         name="NewRoom"
         component={NewRoom}
-        options={{ title: "myceliumOS" }}
+        options={{ title: "Mantar Asistanı" }}
       />
       <Stack.Screen
         name="Room"

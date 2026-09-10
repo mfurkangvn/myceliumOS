@@ -42,7 +42,7 @@ const Header = ({ title }) => {
           onPress={() => navigation.navigate("Home")}
           activeOpacity={0.7}
         >
-          <Text style={styles.appTitle}>{title || "myceliumOS"}</Text>
+          <Text style={styles.appTitle}>{title || "Mantar Asistanı"}</Text>
           <Text style={styles.headerSubtitle}>Mantar Üretim Kontrol Paneli</Text>
         </TouchableOpacity>
       </View>

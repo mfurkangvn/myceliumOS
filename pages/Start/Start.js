@@ -10,6 +10,7 @@ import {
   ScrollView,
   Alert,
   StatusBar,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -28,7 +29,7 @@ export default function Start() {
     if (!name.trim() || !productionPlace.trim()) {
       Alert.alert(
         "Eksik Bilgi",
-        "Lütfen Ad Soyad ve Üretim Tesis Adını doldurunuz."
+        "Lütfen Ad Soyad ve Üretim Tesis Adını doldurunuz.",
       );
       return;
     }
@@ -60,10 +61,12 @@ export default function Start() {
         >
           {/* Header Branding */}
           <View style={styles.brandContainer}>
-            <View style={styles.logoBadge}>
-              <FontAwesome6 name="leaf" size={28} color="#E9C46A" />
-            </View>
-            <Text style={styles.appName}>myceliumOS</Text>
+            <Image
+              source={require("../../assets/icon.png")}
+              style={styles.appLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.appName}>Mantar Asistanı</Text>
             <Text style={styles.appTagline}>
               Akıllı Mantar Üretim & İklim Takip Sistemi
             </Text>
@@ -73,7 +76,8 @@ export default function Start() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Hesap ve Tesis Kaydı</Text>
             <Text style={styles.cardSubtitle}>
-              İstridye mantarı üretim tesisinizi dijitalleştirmek için bilgilerinizi giriniz.
+              İstridye mantarı üretim tesisinizi dijitalleştirmek için
+              bilgilerinizi giriniz.
             </Text>
 
             {/* Input 1: Ad Soyad */}
@@ -88,7 +92,7 @@ export default function Start() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="örn: Mustafa Furkan"
+                  placeholder="İsminizi girin"
                   placeholderTextColor="rgba(255, 255, 255, 0.3)"
                   value={name}
                   onChangeText={setName}
@@ -108,7 +112,7 @@ export default function Start() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="örn: Merkez Mantar Tesisi"
+                  placeholder="Üretim yeri ya da marka ismi"
                   placeholderTextColor="rgba(255, 255, 255, 0.3)"
                   value={productionPlace}
                   onChangeText={setProductionPlace}
@@ -121,7 +125,7 @@ export default function Start() {
               style={[
                 styles.submitBtn,
                 (!name.trim() || !productionPlace.trim()) &&
-                  styles.submitBtnDisabled,
+                styles.submitBtnDisabled,
               ]}
               onPress={handleCreateProfile}
               activeOpacity={0.8}
@@ -145,7 +149,8 @@ export default function Start() {
               style={{ marginRight: 8 }}
             />
             <Text style={styles.infoText}>
-              Bilgileriniz sadece kendi cihazınızda güvenle saklanır ve üretim döngülerinize özel rehber sunmak için kullanılır.
+              Bilgileriniz sadece kendi cihazınızda güvenle saklanır ve üretim
+              döngülerinize özel rehber sunmak için kullanılır.
             </Text>
           </View>
         </ScrollView>
@@ -172,16 +177,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 26,
   },
-  logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "rgba(233, 196, 106, 0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(233, 196, 106, 0.3)",
-    marginBottom: 12,
+  appLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    marginBottom: 14,
   },
   appName: {
     fontSize: 28,

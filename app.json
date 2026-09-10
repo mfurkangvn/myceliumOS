@@ -1,24 +1,43 @@
 {
   "expo": {
-    "name": "myceliumOS",
+    "name": "Mantar Asistanı",
     "slug": "myceliumOS",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mfurkangvn.myceliumos"
     },
     "android": {
+      "package": "com.mfurkangvn.myceliumos",
+      "versionCode": 3,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#081C15",
+        "foregroundImage": "./assets/icon.png"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b7d13154-39c2-48b7-a5d7-72345e9903ef"
+      }
+    },
+    "owner": "mfurkgvn",
+    "plugins": [
+      "expo-notifications",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#081C15"
+        }
+      ]
+    ]
   }
 }
