@@ -1,59 +1,28 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
-import {
-  getIncubationDayData,
-  scratchedDaysData,
-  harvestDaysData,
-} from "../../data/daysData";
+
+// Uyarı kartlarının önem derecesine göre renk ve ikonları
+const SEVERITY_STYLES = {
+  critical: { color: "#FF6B6B", icon: "alert-circle", label: "KRİTİK" },
+  warning: { color: "#F4A261", icon: "warning-outline", label: "UYARI" },
+  info: { color: "#4EA8DE", icon: "information-circle-outline", label: "BİLGİ" },
+};
 
 const DayInsight = ({
   day,
+  activeInfo,
+  plan,
+  checkedTasks = {},
+  onToggleTask,
   isScratchDone,
   scratchTimestamp,
   onToggleScratch,
   isPinSpotted,
-  pinTimestamp,
   onTogglePin,
 }) => {
-  // Determine current day key for incubation
-  const incubationInfo = getIncubationDayData(day);
-  const currentDayKey = incubationInfo.day;
-
-  // Calculate days elapsed since scratch or pin action
-  const getElapsedDaysFromTimestamp = (timestamp) => {
-    if (!timestamp) return 1;
-    const diffTime = Date.now() - timestamp;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return diffDays >= 1 ? diffDays : 1;
-  };
-
-  const scratchElapsedDays = getElapsedDaysFromTimestamp(scratchTimestamp);
-  const pinElapsedDays = getElapsedDaysFromTimestamp(pinTimestamp);
-
-  // Resolve full active phase dataset by phase day count
-  let activeInfo = incubationInfo;
-
-  if (isPinSpotted) {
-    activeInfo =
-      harvestDaysData[pinElapsedDays] || harvestDaysData[1] || harvestDaysData;
-  } else if (isScratchDone) {
-    activeInfo =
-      scratchedDaysData[scratchElapsedDays] ||
-      scratchedDaysData[1] ||
-      scratchedDaysData;
-  }
-
-  // Track completed task indices for interaction
-  const [completedTasks, setCompletedTasks] = useState({});
-
-  const toggleTask = (index) => {
-    setCompletedTasks((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
-  };
+  const isCorrective = plan?.mode === "corrective";
 
   const isScratchPeriod = Number(day) >= 8;
 
@@ -65,7 +34,8 @@ const DayInsight = ({
 
   const canShowPinButton = isPinSpotted || (isScratchDone && isOneDayPassed);
 
-  const effectiveTasks = activeInfo.tasks || [];
+  const effectiveTasks = plan?.tasks || [];
+  const alerts = plan?.alerts || [];
 
   return (
     <View style={styles.container}>
@@ -159,17 +129,47 @@ const DayInsight = ({
         </View>
       )}
 
-      {/* 5. Actionable Task Checklist */}
-      {effectiveTasks && effectiveTasks.length > 0 && (
+      {/* 5. Measurement-based Alerts */}
+      {alerts.map((alert) => {
+        const severityStyle = SEVERITY_STYLES[alert.severity] || SEVERITY_STYLES.info;
+        return (
+          <View
+            key={alert.ruleId}
+            style={[
+              styles.alertCard,
+              {
+                borderColor: severityStyle.color,
+                backgroundColor: `${severityStyle.color}1A`,
+              },
+            ]}
+          >
+            <View style={styles.alertHeader}>
+              <Ionicons name={severityStyle.icon} size={16} color={severityStyle.color} />
+              <Text style={[styles.alertSeverity, { color: severityStyle.color }]}>
+                {severityStyle.label}
+              </Text>
+            </View>
+            <Text style={styles.alertTitle}>{alert.title}</Text>
+            <Text style={styles.alertReason}>{alert.reason}</Text>
+          </View>
+        );
+      })}
+
+      {/* 6. Actionable Task Checklist */}
+      {effectiveTasks.length > 0 && (
         <View style={styles.tasksSection}>
-          <Text style={styles.tasksHeaderTitle}>GÜNLÜK GÖREV LİSTESİ</Text>
-          {effectiveTasks.map((task, index) => {
-            const isDone = !!completedTasks[index];
+          <Text
+            style={[styles.tasksHeaderTitle, isCorrective && styles.tasksHeaderCorrective]}
+          >
+            {isCorrective ? "DÜZELTİCİ AKSİYON LİSTESİ" : "GÜNLÜK GÖREV LİSTESİ"}
+          </Text>
+          {effectiveTasks.map((task) => {
+            const isDone = !!checkedTasks[task.id];
             return (
               <TouchableOpacity
-                key={index}
+                key={task.id}
                 style={[styles.taskRow, isDone && styles.taskRowDone]}
-                onPress={() => toggleTask(index)}
+                onPress={() => onToggleTask?.(task.id)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.checkbox, isDone && styles.checkboxDone]}>
@@ -178,11 +178,16 @@ const DayInsight = ({
                   )}
                 </View>
                 <Text style={[styles.taskText, isDone && styles.taskTextDone]}>
-                  {task}
+                  {task.text}
                 </Text>
               </TouchableOpacity>
             );
           })}
+          {isCorrective && (
+            <Text style={styles.correctiveNote}>
+              Ölçümler hedef aralığa döndüğünde günlük görev listesi otomatik olarak geri gelir.
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -340,7 +345,44 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "bold",
   },
+  alertCard: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  alertHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  alertSeverity: {
+    fontSize: 10,
+    fontWeight: "bold",
+    letterSpacing: 1,
+  },
+  alertTitle: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  alertReason: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 11,
+    lineHeight: 16,
+  },
   tasksSection: {
+    marginTop: 4,
+  },
+  tasksHeaderCorrective: {
+    color: "#F4A261",
+  },
+  correctiveNote: {
+    color: "rgba(255, 255, 255, 0.45)",
+    fontSize: 10,
+    fontStyle: "italic",
     marginTop: 4,
   },
   tasksHeaderTitle: {

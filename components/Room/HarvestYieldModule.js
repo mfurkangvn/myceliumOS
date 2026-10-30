@@ -8,6 +8,10 @@ import {
   Alert,
 } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { parseMeasurement } from "../../utils/dateUtils";
+
+// Kayan nokta toplamlarında (0.1 + 0.2) uzun kuyruklar oluşmasın
+const roundKg = (value) => Math.round(value * 100) / 100;
 
 const HarvestYieldModule = ({
   harvestLogs = {},
@@ -19,10 +23,13 @@ const HarvestYieldModule = ({
   const [harvestSavedAt, setHarvestSavedAt] = useState(null);
 
   // Calculate total harvest kg
-  const totalHarvestKg = Object.values(harvestLogs).reduce(
-    (sum, val) => sum + (parseFloat(val) || 0),
-    0
+  const totalHarvestKg = roundKg(
+    Object.values(harvestLogs).reduce(
+      (sum, val) => sum + (parseFloat(val) || 0),
+      0
+    )
   );
+  const todayHarvestKg = roundKg(parseFloat(harvestLogs[todayKey]) || 0);
 
   const compostKg =
     parseFloat(String(compostCapacityStr || "").replace(/[^0-9.]/g, "")) ||
@@ -31,12 +38,14 @@ const HarvestYieldModule = ({
   const yieldPercent = ((totalHarvestKg / compostKg) * 100).toFixed(1);
 
   const handleSave = () => {
-    if (!harvestInput.trim() || isNaN(harvestInput)) {
-      Alert.alert("Hata", "Lütfen geçerli bir kilo (kg) miktarı giriniz.");
+    // Virgüllü girişleri (1,5) kabul eder; sıfır ve negatif değerleri reddeder
+    const weightKg = parseMeasurement(harvestInput);
+    if (weightKg === null || weightKg <= 0) {
+      Alert.alert("Hata", "Lütfen 0'dan büyük geçerli bir kilo (kg) miktarı giriniz. Örnek: 12 veya 12,5");
       return;
     }
 
-    onSaveHarvest(harvestInput);
+    onSaveHarvest(weightKg);
     setHarvestSavedAt(
       new Date().toLocaleTimeString("tr-TR", {
         hour: "2-digit",
@@ -92,7 +101,7 @@ const HarvestYieldModule = ({
 
       {harvestSavedAt && (
         <Text style={styles.harvestSavedBadge}>
-          ✓ {todayKey} kaydı eklendi ({harvestSavedAt})
+          ✓ {todayKey} kaydı eklendi ({harvestSavedAt}) · Bugün toplam: {todayHarvestKg} kg
         </Text>
       )}
     </View>

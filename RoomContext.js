@@ -4,6 +4,7 @@ import {
   registerForPushNotificationsAsync,
   scheduleDynamicReminders,
   cancelAllScheduledNotifications,
+  areNotificationsSupported,
 } from "./utils/notificationHelper";
 
 export const RoomContext = createContext();
@@ -119,6 +120,8 @@ export const RoomProvider = ({ children }) => {
           ...newRoom,
           logs: {},
           harvestLogs: {},
+          taskChecks: {},
+          createdAt: Date.now(),
           isScratchDone: false,
           scratchTimestamp: null,
           isPinSpotted: false,
@@ -170,10 +173,12 @@ export const RoomProvider = ({ children }) => {
     setRooms((prev) => {
       const updated = prev.map((r) => {
         if (String(r.id) === String(roomId)) {
+          // Aynı gün birden fazla toplama yapılabilir; yeni miktar günün toplamına eklenir
           const currentHarvest = r.harvestLogs || {};
+          const dayTotal = (parseFloat(currentHarvest[dateKey]) || 0) + (parseFloat(weightKg) || 0);
           const updatedHarvest = {
             ...currentHarvest,
-            [dateKey]: parseFloat(weightKg) || 0,
+            [dateKey]: Math.round(dayTotal * 100) / 100,
           };
           return {
             ...r,
@@ -184,6 +189,23 @@ export const RoomProvider = ({ children }) => {
       });
       return updated;
     });
+  };
+
+  // Günlük plandaki görev işaretleri. Sadece içinde bulunulan günün işaretleri tutulur;
+  // gün değişince eski işaretler atılır ve yeni günün listesi temiz başlar.
+  const toggleTaskCheck = (roomId, dateKey, taskId) => {
+    setRooms((prev) =>
+      prev.map((r) => {
+        if (String(r.id) !== String(roomId)) return r;
+        const dayChecks = r.taskChecks?.[dateKey] || {};
+        return {
+          ...r,
+          taskChecks: {
+            [dateKey]: { ...dayChecks, [taskId]: !dayChecks[taskId] },
+          },
+        };
+      })
+    );
   };
 
   const toggleScratchStatus = (roomId) => {
@@ -229,6 +251,11 @@ export const RoomProvider = ({ children }) => {
   const updateNotificationSettings = async (newSettings) => {
     try {
       if (newSettings.enabled) {
+        // Expo Go'da bildirim modülü yüklenmez; izin hatası gibi göstermeyelim
+        if (!areNotificationsSupported()) {
+          return { success: false, error: "unsupported_environment" };
+        }
+
         const hasPermission = await registerForPushNotificationsAsync();
         if (!hasPermission) {
           const disabledSettings = { ...newSettings, enabled: false };
@@ -236,11 +263,10 @@ export const RoomProvider = ({ children }) => {
           await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(disabledSettings));
           return { success: false, error: "permission_denied" };
         }
-        await scheduleDynamicReminders(rooms, newSettings.morningTime, newSettings.eveningTime);
-      } else {
-        await cancelAllScheduledNotifications();
       }
 
+      // Planlama/iptal işini yukarıdaki senkronizasyon effect'i yapar;
+      // burada tekrar planlamak çift bildirime yol açıyordu.
       setNotificationSettings(newSettings);
       await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(newSettings));
       return { success: true };
@@ -264,6 +290,7 @@ export const RoomProvider = ({ children }) => {
         deleteRoom,
         updateRoomLog,
         addHarvestLog,
+        toggleTaskCheck,
         toggleScratchStatus,
         togglePinStatus,
         isLoading,

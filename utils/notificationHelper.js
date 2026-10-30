@@ -1,32 +1,51 @@
 import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
-import { getIncubationDayData, scratchedDaysData, harvestDaysData } from "../data/daysData";
-import { getElapsedDays, getElapsedDaysFromTimestamp } from "./dateUtils";
+import { getRoomPhase } from "./roomPhase";
+import { addDays } from "./dateUtils";
+import { buildDailyPlan } from "../domain/planner";
 
-// expo-notifications SDK 53+ ile Android Expo Go içinde çalıştırıldığında hata fırlatır.
-// Bu yüzden yalnızca Expo Go dışındayken (APK ve Standalone ortamlarda) yüklenir.
+// expo-notifications import edildiği anda push token dinleyicisi kurar
+// (DevicePushTokenAutoRegistration.fx) ve bu SDK 53+ Android Expo Go'da hata fırlatır.
+// Bu yüzden yalnızca Expo Go dışındayken (development build, APK, Standalone) yüklenir.
 let Notifications = null;
 if (!isRunningInExpoGo()) {
   try {
     Notifications = require("expo-notifications");
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
       }),
     });
   } catch (e) {
+    Notifications = null;
     console.warn("expo-notifications yüklenemedi:", e);
   }
 }
+
+/**
+ * Bildirim modülü bu ortamda kullanılabilir mi? (Expo Go'da false döner)
+ * @returns {boolean}
+ */
+export const areNotificationsSupported = () => Notifications !== null;
+
+// Planlama/iptal işlemlerini sıraya alır; eşzamanlı çağrılar
+// birbirinin iptalini ezip çift bildirim oluşturmasın.
+let notificationQueue = Promise.resolve();
+const enqueue = (task) => {
+  const run = notificationQueue.catch(() => undefined).then(task);
+  notificationQueue = run;
+  return run;
+};
 
 /**
  * Registers notification channel (for Android) and requests user permission.
  * @returns {Promise<boolean>} True if permission granted, otherwise false.
  */
 export async function registerForPushNotificationsAsync() {
-  if (isRunningInExpoGo() || !Notifications) {
+  if (!Notifications) {
     return false;
   }
 
@@ -61,40 +80,31 @@ export async function registerForPushNotificationsAsync() {
  * @param {number} futureDaysOffset - Number of days in the future (0 = today, 1 = tomorrow, etc.)
  */
 export function getRoomDataForFutureDay(room, futureDaysOffset) {
-  // Base elapsed days calculation
-  const elapsedDays = getElapsedDays(room.date) + futureDaysOffset;
-  
-  if (room.isPinSpotted) {
-    const pinDays = getElapsedDaysFromTimestamp(room.pinTimestamp) + futureDaysOffset;
-    const target = harvestDaysData[pinDays] || harvestDaysData[10] || harvestDaysData[1];
-    return {
-      stage: "Pin & Hasat Evresi",
-      day: pinDays,
-      title: target?.title || "Pin & Hasat Evresi",
-      warning: target?.warning || null,
-      tasks: target?.tasks || [],
-    };
-  } else if (room.isScratchDone) {
-    const scratchDays = getElapsedDaysFromTimestamp(room.scratchTimestamp) + futureDaysOffset;
-    const target = scratchedDaysData[scratchDays] || scratchedDaysData[10] || scratchedDaysData[1];
-    return {
-      stage: "Çizik & Sarım Evresi",
-      day: scratchDays,
-      title: target?.title || "Çizik & Sarım Evresi",
-      warning: target?.warning || null,
-      tasks: target?.tasks || [],
-    };
-  } else {
-    const target = getIncubationDayData(elapsedDays);
-    return {
-      stage: "Kuluçka Evresi",
-      day: elapsedDays,
-      title: target?.title || "Kuluçka Evresi",
-      warning: target?.warning || null,
-      tasks: target?.tasks || [],
-    };
-  }
+  const { day, info } = getRoomPhase(room, futureDaysOffset);
+  return {
+    stage: info.stage,
+    day,
+    title: info.title || info.stage,
+    warning: info.warning || null,
+    tasks: info.tasks || [],
+  };
 }
+
+/**
+ * Odanın o günkü düzeltici planındaki en önemli uyarıyı döndürür.
+ * Plan önceki günün ölçümlerinden hesaplandığı için sadece bugün ve yarın bilinir;
+ * daha ilerideki günlerin ölçümleri henüz girilmediğinden null döner.
+ * @param {object} room
+ * @param {number} futureDaysOffset
+ */
+export function getCorrectiveAlertForDay(room, futureDaysOffset) {
+  if (futureDaysOffset > 1) return null;
+  const plan = buildDailyPlan(room, addDays(new Date(), futureDaysOffset));
+  return plan.mode === "corrective" ? plan.alerts[0] : null;
+}
+
+const truncate = (text, max = 120) =>
+  text.length > max ? text.substring(0, max - 3) + "..." : text;
 
 /**
  * Generates appropriate title and body for a notification at a future date offset.
@@ -112,6 +122,23 @@ export function generateNotificationText(rooms, futureDaysOffset, isMorning) {
       body: isMorning
         ? "Mantar odanızın sabah iklim verilerini kaydetmeyi unutmayın!"
         : "Mantar odanızın akşam iklim verilerini kaydetmeyi unutmayın!",
+    };
+  }
+
+  // Ölçümlerden doğan düzeltici uyarılar, evrenin sabit uyarılarından önce gelir
+  const correctiveRooms = rooms
+    .map((room) => ({ room, alert: getCorrectiveAlertForDay(room, futureDaysOffset) }))
+    .filter(({ alert }) => alert);
+
+  if (correctiveRooms.length > 0) {
+    const { room, alert } = correctiveRooms[0];
+    const icon = alert.severity === "critical" ? "🚨" : "⚠️";
+    return {
+      title:
+        rooms.length === 1
+          ? `${icon} ${room.name} - Düzeltici Aksiyon`
+          : `${icon} Düzeltici Aksiyon (${correctiveRooms.length} Oda)`,
+      body: truncate(`${room.name}: ${alert.title}. ${alert.reason}`),
     };
   }
 
@@ -171,11 +198,15 @@ export function generateNotificationText(rooms, futureDaysOffset, isMorning) {
  * @param {string} morningTimeStr - Format: "HH:MM", e.g. "09:00"
  * @param {string} eveningTimeStr - Format: "HH:MM", e.g. "19:00"
  */
-export async function scheduleDynamicReminders(rooms, morningTimeStr, eveningTimeStr) {
-  if (isRunningInExpoGo() || !Notifications) {
-    return;
+export function scheduleDynamicReminders(rooms, morningTimeStr, eveningTimeStr) {
+  if (!Notifications) {
+    return Promise.resolve();
   }
 
+  return enqueue(() => scheduleDynamicRemindersNow(rooms, morningTimeStr, eveningTimeStr));
+}
+
+async function scheduleDynamicRemindersNow(rooms, morningTimeStr, eveningTimeStr) {
   try {
     // Clear any existing notifications before scheduling new ones to prevent overlaps
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -237,7 +268,7 @@ export async function scheduleDynamicReminders(rooms, morningTimeStr, eveningTim
  * Triggers a one-off test notification after 5 seconds.
  */
 export async function triggerTestNotification() {
-  if (isRunningInExpoGo() || !Notifications) {
+  if (!Notifications) {
     return false;
   }
 
@@ -249,6 +280,7 @@ export async function triggerTestNotification() {
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
       },
     });
@@ -262,14 +294,16 @@ export async function triggerTestNotification() {
 /**
  * Cancels all scheduled local notifications.
  */
-export async function cancelAllScheduledNotifications() {
-  if (isRunningInExpoGo() || !Notifications) {
-    return;
+export function cancelAllScheduledNotifications() {
+  if (!Notifications) {
+    return Promise.resolve();
   }
 
-  try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch (e) {
-    console.warn("cancelAllScheduledNotifications hatası:", e);
-  }
+  return enqueue(async () => {
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+    } catch (e) {
+      console.warn("cancelAllScheduledNotifications hatası:", e);
+    }
+  });
 }

@@ -11,13 +11,21 @@ import {
   PanResponder,
   Switch,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import { useNavigation } from "@react-navigation/native";
 import { RoomContext } from "../../RoomContext";
-import { triggerTestNotification } from "../../utils/notificationHelper";
+import appConfig from "../../app.json";
+import {
+  triggerTestNotification,
+  areNotificationsSupported,
+} from "../../utils/notificationHelper";
+
+const EXPO_GO_NOTICE =
+  "Bildirimler Expo Go içinde desteklenmiyor. Hatırlatıcıları denemek için development build veya APK kullanın.";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -83,6 +91,8 @@ const SideDrawer = () => {
     if (res.success) {
       Alert.alert("Başarılı", "Bildirim ayarlarınız güncellendi.");
       setIsNotificationModalOpen(false);
+    } else if (res.error === "unsupported_environment") {
+      Alert.alert("Desteklenmiyor", EXPO_GO_NOTICE);
     } else if (res.error === "permission_denied") {
       Alert.alert(
         "İzin Reddedildi",
@@ -94,8 +104,17 @@ const SideDrawer = () => {
   };
 
   const handleTestNotification = async () => {
-    await triggerTestNotification();
-    Alert.alert("Test Bildirimi", "5 saniye içerisinde test bildirimi cihazınıza ulaşacaktır.");
+    if (!areNotificationsSupported()) {
+      Alert.alert("Desteklenmiyor", EXPO_GO_NOTICE);
+      return;
+    }
+
+    const sent = await triggerTestNotification();
+    if (sent) {
+      Alert.alert("Test Bildirimi", "5 saniye içerisinde test bildirimi cihazınıza ulaşacaktır.");
+    } else {
+      Alert.alert("Hata", "Test bildirimi planlanamadı. Bildirim iznini kontrol edin.");
+    }
   };
 
   // Swipe gesture for opening from left edge when closed
@@ -263,7 +282,7 @@ const SideDrawer = () => {
 
                 <View style={styles.versionRow}>
                   <Ionicons name="information-circle-outline" size={15} color="rgba(255,255,255,0.4)" />
-                  <Text style={styles.versionText}>Mantar Asistanı v1.0.0</Text>
+                  <Text style={styles.versionText}>Mantar Asistanı v{appConfig.expo.version}</Text>
                 </View>
 
                 {/* Delete Account Button */}
@@ -308,6 +327,12 @@ const SideDrawer = () => {
                 <Text style={styles.modalSubtitle}>
                   Günlük sabah ve akşam ölçümlerini zamanında yapabilmeniz için hatırlatıcılar kurun.
                 </Text>
+
+                {!areNotificationsSupported() && (
+                  <Text style={[styles.toggleDesc, { color: "#F4A261", marginBottom: 12 }]}>
+                    ⚠️ {EXPO_GO_NOTICE}
+                  </Text>
+                )}
 
                 {/* Toggle Row */}
                 <View style={styles.notifToggleRow}>

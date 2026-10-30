@@ -17,17 +17,9 @@ import TargetClimateConsole from "../../components/Room/TargetClimateConsole";
 import HarvestYieldModule from "../../components/Room/HarvestYieldModule";
 import TelemetryEntryCard from "../../components/Room/TelemetryEntryCard";
 
-import {
-  getIncubationDayData,
-  scratchedDaysData,
-  harvestDaysData,
-} from "../../data/daysData";
 import { RoomContext } from "../../RoomContext";
-import {
-  getLocalDateKey,
-  getElapsedDays,
-  getElapsedDaysFromTimestamp,
-} from "../../utils/dateUtils";
+import { getLocalDateKey, getElapsedDays } from "../../utils/dateUtils";
+import { buildDailyPlan } from "../../domain/planner";
 
 const Room = ({ route, navigation }) => {
   const {
@@ -35,6 +27,7 @@ const Room = ({ route, navigation }) => {
     deleteRoom,
     updateRoomLog,
     addHarvestLog,
+    toggleTaskCheck,
     toggleScratchStatus,
     togglePinStatus,
   } = useContext(RoomContext);
@@ -58,25 +51,10 @@ const Room = ({ route, navigation }) => {
 
   // Days calculations
   const elapsedDays = getElapsedDays(startDate);
-  const scratchDays = getElapsedDaysFromTimestamp(currentRoom?.scratchTimestamp);
-  const pinDays = getElapsedDaysFromTimestamp(currentRoom?.pinTimestamp);
 
-  // Default incubation target data
-  const currentDayData = getIncubationDayData(elapsedDays);
-
-  // Resolve active phase target
-  let activeTarget = currentDayData;
-  if (currentRoom?.isPinSpotted) {
-    activeTarget =
-      harvestDaysData[pinDays] ||
-      harvestDaysData[1] ||
-      harvestDaysData;
-  } else if (currentRoom?.isScratchDone) {
-    activeTarget =
-      scratchedDaysData[scratchDays] ||
-      scratchedDaysData[1] ||
-      scratchedDaysData;
-  }
+  // Ölçümlere göre günün planı (normal veya düzeltici) ve aktif evre hedefleri
+  const plan = buildDailyPlan(currentRoom);
+  const activeTarget = plan.info;
 
   const handleDeleteRoom = () => {
     const targetRoomId = id || currentRoom?.id;
@@ -134,6 +112,13 @@ const Room = ({ route, navigation }) => {
           {/* 2. Component: Dynamic Daily Insight Guidance */}
           <DayInsight
             day={elapsedDays}
+            activeInfo={activeTarget}
+            plan={plan}
+            checkedTasks={currentRoom?.taskChecks?.[plan.dateKey] || {}}
+            onToggleTask={(taskId) =>
+              (id || currentRoom?.id) &&
+              toggleTaskCheck(id || currentRoom?.id, plan.dateKey, taskId)
+            }
             isScratchDone={currentRoom?.isScratchDone}
             scratchTimestamp={currentRoom?.scratchTimestamp}
             onToggleScratch={() =>
@@ -141,7 +126,6 @@ const Room = ({ route, navigation }) => {
               toggleScratchStatus(id || currentRoom?.id)
             }
             isPinSpotted={currentRoom?.isPinSpotted}
-            pinTimestamp={currentRoom?.pinTimestamp}
             onTogglePin={() =>
               (id || currentRoom?.id) &&
               togglePinStatus(id || currentRoom?.id)

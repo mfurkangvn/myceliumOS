@@ -4,40 +4,28 @@ import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { useNavigation } from "@react-navigation/native";
-import {
-  incubationDaysData,
-  scratchedDaysData,
-  harvestDaysData,
-} from "../../data/daysData";
 import { getElapsedDays } from "../../utils/dateUtils";
+import { buildDailyPlan } from "../../domain/planner";
 
 const RoomCards = ({ room }) => {
   const navigation = useNavigation();
   const roomName = room?.name || "İsimsiz Oda";
   const startDate = room?.date || "01.01.2026";
 
+  // Kart rozeti üretimin toplam gününü gösterir (oda sayfasındaki "Geçen Süre" ile aynı)
   const elapsedDays = getElapsedDays(startDate);
 
-  // Dynamic phase resolution
-  let activePhaseInfo = incubationDaysData[elapsedDays] || incubationDaysData[1];
-  if (room?.isPinSpotted) {
-    activePhaseInfo =
-      harvestDaysData[elapsedDays] ||
-      harvestDaysData[1] ||
-      harvestDaysData;
-  } else if (room?.isScratchDone) {
-    activePhaseInfo =
-      scratchedDaysData[elapsedDays] ||
-      scratchedDaysData[1] ||
-      scratchedDaysData;
-  }
+  // Evre hedefleri ve düzeltici plan durumu, oda sayfasıyla aynı plandan okunur
+  const plan = buildDailyPlan(room);
+  const activePhaseInfo = plan.info;
+  const topAlert = plan.mode === "corrective" ? plan.alerts[0] : null;
 
   return (
     <View style={styles.container}>
       <TouchableOpacity
         activeOpacity={0.8}
         style={styles.card}
-        onPress={() => navigation.navigate("Room", room)}
+        onPress={() => navigation.navigate("Room", { id: room.id })}
       >
         {/* Card Header */}
         <View style={styles.cardHeader}>
@@ -73,6 +61,31 @@ const RoomCards = ({ room }) => {
             />
           </View>
         </View>
+
+        {/* Corrective Plan Badge */}
+        {topAlert && (
+          <View
+            style={[
+              styles.correctiveBadge,
+              topAlert.severity === "critical" && styles.correctiveBadgeCritical,
+            ]}
+          >
+            <Feather
+              name="alert-triangle"
+              size={13}
+              color={topAlert.severity === "critical" ? "#FF6B6B" : "#F4A261"}
+            />
+            <Text
+              style={[
+                styles.correctiveBadgeText,
+                topAlert.severity === "critical" && styles.correctiveBadgeTextCritical,
+              ]}
+              numberOfLines={1}
+            >
+              Düzeltici plan: {topAlert.title}
+            </Text>
+          </View>
+        )}
 
         {/* Section Divider & Title */}
         <View style={styles.dividerContainer}>
@@ -156,6 +169,31 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 20,
     fontWeight: "bold",
+  },
+  correctiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: "rgba(244, 162, 97, 0.1)",
+    borderColor: "rgba(244, 162, 97, 0.35)",
+  },
+  correctiveBadgeCritical: {
+    backgroundColor: "rgba(255, 107, 107, 0.1)",
+    borderColor: "rgba(255, 107, 107, 0.4)",
+  },
+  correctiveBadgeText: {
+    flex: 1,
+    color: "#F4A261",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  correctiveBadgeTextCritical: {
+    color: "#FF6B6B",
   },
   statusBadge: {
     backgroundColor: "rgba(82, 183, 136, 0.12)",

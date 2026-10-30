@@ -10,6 +10,7 @@ import DashboardStatsGrid from "../../components/Home/DashboardStatsGrid";
 import RoomCards from "../../components/RoomCards/RoomCards";
 import AddCardButton from "./AddCardButton";
 import { RoomContext } from "../../RoomContext";
+import { buildDailyPlan } from "../../domain/planner";
 
 const Home = () => {
   const navigation = useNavigation();
@@ -27,6 +28,7 @@ const Home = () => {
   );
   const scratchRooms = rooms.filter((r) => r.isScratchDone && !r.isPinSpotted);
   const pinHarvestRooms = rooms.filter((r) => r.isPinSpotted);
+  const correctiveRooms = rooms.filter((r) => buildDailyPlan(r).mode === "corrective");
 
   const totalCompostKg = rooms.reduce(
     (acc, r) => acc + parseWeight(r.productionPlace),
@@ -112,7 +114,7 @@ const Home = () => {
             <View style={styles.progressSection}>
               <View style={styles.progressLabels}>
                 <Text style={styles.progressLabelLeft}>Rekolte Hedefi: ~{targetYieldKg.toLocaleString()} kg</Text>
-                <Text style={styles.progressLabelRight}>%{targetYieldKg > 0 ? Math.round((totalActualHarvestKg / targetYieldKg) * 100) : 0}%</Text>
+                <Text style={styles.progressLabelRight}>%{targetYieldKg > 0 ? Math.round((totalActualHarvestKg / targetYieldKg) * 100) : 0}</Text>
               </View>
               <View style={styles.progressBarBg}>
                 <View 
@@ -124,6 +126,35 @@ const Home = () => {
               </View>
               <Text style={styles.progressStatusText}>
                 * İdeal verimlilik kompost ağırlığının %25'idir (biyolojik etkinlik).
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Measurement-based Corrective Plan Banner */}
+        {correctiveRooms.length > 0 && (
+          <View
+            style={[
+              styles.alertBanner,
+              {
+                backgroundColor: "rgba(255, 107, 107, 0.08)",
+                borderColor: "rgba(255, 107, 107, 0.3)",
+              },
+            ]}
+          >
+            <Ionicons
+              name="alert-circle-outline"
+              size={20}
+              color="#FF6B6B"
+              style={{ marginRight: 10 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.alertTitle, { color: "#FF6B6B" }]}>
+                DÜZELTİCİ AKSİYON GEREKİYOR
+              </Text>
+              <Text style={styles.alertText}>
+                {correctiveRooms.map((r) => r.name).join(", ")}: ölçümler hedef
+                aralığın dışında. Oda sayfasındaki düzeltici listeyi uygulayın.
               </Text>
             </View>
           </View>

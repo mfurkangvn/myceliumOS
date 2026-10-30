@@ -690,4 +690,35 @@ export const getIncubationDayData = (day) => {
   return incubationDaysData[incubationDay] || incubationDaysData[1];
 };
 
+// Çizik ve hasat günlerinin bazılarında evre adı, başlık veya açıklama
+// tanımlı değil; bunlar evrenin genel değerlerinden tamamlanır.
+const INHERITED_PHASE_FIELDS = [
+  "stage",
+  "title",
+  "targetTemp",
+  "targetCompostTemp",
+  "targetHumidity",
+  "targetFan",
+  "targetLight",
+  "description",
+];
+
+// Plan süresi aşıldığında 1. güne dönmek yerine son günün hedefleri korunur.
+const getPhaseDayData = (phaseData, day) => {
+  const dayKeys = Object.keys(phaseData).map(Number).filter(Number.isInteger);
+  const lastDay = Math.max(...dayKeys);
+  const normalizedDay = Math.max(1, Math.floor(Number(day) || 1));
+  const dayEntry = phaseData[Math.min(normalizedDay, lastDay)] || {};
+
+  const inherited = {};
+  INHERITED_PHASE_FIELDS.forEach((field) => {
+    if (phaseData[field] !== undefined) inherited[field] = phaseData[field];
+  });
+
+  return { ...inherited, ...dayEntry };
+};
+
+export const getScratchDayData = (day) => getPhaseDayData(scratchedDaysData, day);
+export const getHarvestDayData = (day) => getPhaseDayData(harvestDaysData, day);
+
 export default daysData;

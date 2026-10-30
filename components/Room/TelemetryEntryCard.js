@@ -11,7 +11,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import Feather from "@expo/vector-icons/Feather";
 import { parseMeasurement } from "../../utils/dateUtils";
 
-const TelemetryEntryCard = ({ existingDayLogs = {}, onSaveTelemetry }) => {
+const TelemetryEntryCard = ({ existingDayLogs, onSaveTelemetry }) => {
   const [activeSession, setActiveSession] = useState("morning");
   const [roomTempInput, setRoomTempInput] = useState("");
   const [compostTempInput, setCompostTempInput] = useState("");
@@ -19,8 +19,12 @@ const TelemetryEntryCard = ({ existingDayLogs = {}, onSaveTelemetry }) => {
   const [isSaved, setIsSaved] = useState(false);
   const [savedTimeBadge, setSavedTimeBadge] = useState(null);
 
+  // Effect'i yalnızca aktif oturumun kayıtlı verisine bağlıyoruz. Bu referans
+  // state'ten geldiği için sabittir (yoksa undefined); `= {}` gibi her render'da
+  // yeni obje üreten bir varsayılan, her tuş vuruşunda girişleri sıfırlıyordu.
+  const sessionData = existingDayLogs?.[activeSession];
+
   useEffect(() => {
-    const sessionData = existingDayLogs[activeSession];
     if (sessionData) {
       setRoomTempInput(String(sessionData.roomTemp ?? ""));
       setCompostTempInput(String(sessionData.compostTemp ?? ""));
@@ -34,7 +38,7 @@ const TelemetryEntryCard = ({ existingDayLogs = {}, onSaveTelemetry }) => {
       setIsSaved(false);
       setSavedTimeBadge(null);
     }
-  }, [activeSession, existingDayLogs]);
+  }, [activeSession, sessionData]);
 
   const handleSave = () => {
     const roomTemp = parseMeasurement(roomTempInput);
